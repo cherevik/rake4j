@@ -1,5 +1,8 @@
 package rake4j.core;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import junit.framework.TestCase;
 import org.junit.After;
 import org.junit.Before;
@@ -11,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Unit test for simple App.
@@ -139,6 +143,57 @@ public class RakeAnalyzerTest extends TestCase {
         rake.loadDocument(doc);
         rake.run();
         assertTrue(doc.getTermMap().toString().contains("accountancy module"));
+    }
+
+    @Test
+    public void testGuavaIntegration() throws Exception {
+        // Test that Guava 33.0.0-jre works correctly with rake4j
+        // This test verifies key Guava functionality that was problematic in older versions
+
+        // Test ImmutableList
+        ImmutableList<String> texts = ImmutableList.of(
+            "machine learning algorithms",
+            "natural language processing",
+            "artificial intelligence systems"
+        );
+        assertEquals(3, texts.size());
+        assertTrue(texts.contains("machine learning algorithms"));
+
+        // Test ImmutableMap with toImmutableMap() - this was the method causing NoSuchMethodError
+        Map<String, Integer> wordLengths = texts.stream()
+            .collect(ImmutableMap.toImmutableMap(
+                text -> text,
+                text -> text.length()
+            ));
+        assertEquals(3, wordLengths.size());
+        assertEquals(Integer.valueOf(27), wordLengths.get("machine learning algorithms"));
+
+        // Test Lists.partition() - another common Guava utility
+        List<String> words = Lists.newArrayList("one", "two", "three", "four", "five", "six");
+        List<List<String>> partitions = Lists.partition(words, 2);
+        assertEquals(3, partitions.size());
+        assertEquals(2, partitions.get(0).size());
+
+        // Test rake4j functionality with Guava collections
+        String text = "machine learning algorithms process natural language efficiently";
+        Document doc = new Document(text);
+        RakeAnalyzer rake = new RakeAnalyzer();
+        rake.loadDocument(doc);
+        rake.run();
+
+        // Verify rake analysis completed successfully
+        assertNotNull(doc.getTermMap());
+        assertTrue(doc.getTermMap().size() > 0);
+
+        // Use Guava to process results
+        List<String> terms = doc.getTermMap().values().stream()
+            .map(term -> term.getTermText())
+            .collect(Collectors.toList());
+        assertTrue(terms.size() > 0);
+
+        // Create immutable collection from results
+        ImmutableList<String> immutableTerms = ImmutableList.copyOf(terms);
+        assertEquals(terms.size(), immutableTerms.size());
     }
 
 }
